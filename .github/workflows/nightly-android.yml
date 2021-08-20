@@ -104,7 +104,7 @@ jobs:
     - name: (Temporary) Patch Android SDL and replace version
       working-directory: /android-sdl
       run: |
-        cp -r $GITHUB_WORKSPACE/.github/android/*.patch .
+        if [ -f $GITHUB_WORKSPACE/.github/android/*.patch ]; then cp -r $GITHUB_WORKSPACE/.github/android/*.patch .; fi;
         if [ -f *.patch ]; then git apply *.patch; fi;
         sed -i "s/^AppVersionCode=[0-9]\+/AppVersionCode=$(svnversion project/jni/application/simutrans/simutrans)/" ./project/jni/application/simutrans/AndroidAppSettings.cfg
         sed -i "s/^AppVersionName=\"[0-9]\+.[0-9]\+\"/AppVersionName=\"r$(svnversion project/jni/application/simutrans/simutrans)\"/" ./project/jni/application/simutrans/AndroidAppSettings.cfg
