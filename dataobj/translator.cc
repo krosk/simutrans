@@ -550,7 +550,9 @@ bool translator::set_language(const char *iso)
 
 	// if the request language does not exist
 	if( single_instance.current_lang == -1 ) {
+#ifndef __ANDROID__
 		set_language(0);
+#endif
 	}
 
 	return false;
