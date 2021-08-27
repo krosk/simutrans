@@ -224,11 +224,21 @@ bool gui_scrolled_list_t::infowin_event(const event_t *ev)
 
 void gui_scrolled_list_t::calc_selection(scrollitem_t* old_focus, scrollitem_t* new_focus, event_t ev)
 {
+#ifdef __ANDROID__
+	bool select_new_focus = !old_focus  ||  !multiple_selection;
+	bool toggle_focus = multiple_selection;
+	bool batch_select = false;
+#else
+	bool select_new_focus = !old_focus  ||  !multiple_selection  ||  ev.ev_key_mod==0;
+	bool toggle_focus = multiple_selection && IS_CONTROL_PRESSED(&ev);
+	bool batch_select = multiple_selection && IS_SHIFT_PRESSED(&ev);
+#endif
+
 	if(  !new_focus  ) {
 		// do nothing.
 		return;
 	}
-	else if(  !old_focus  ||  !multiple_selection  ||  ev.ev_key_mod==0  ) {
+	else if(  select_new_focus  ) {
 		// simply select new_focus
 		FOR(vector_tpl<gui_component_t*>, v, item_list) {
 			scrollitem_t* item = dynamic_cast<scrollitem_t*>(v);
@@ -237,11 +247,11 @@ void gui_scrolled_list_t::calc_selection(scrollitem_t* old_focus, scrollitem_t* 
 			}
 		}
 	}
-	else if(  IS_CONTROL_PRESSED(&ev)  ) {
+	else if(  toggle_focus  ) {
 		// control key is pressed. select or deselect the focused one.
 		new_focus->selected = !new_focus->selected;
 	}
-	else if(  IS_SHIFT_PRESSED(&ev)  ) {
+	else if(  batch_select  ) {
 		// shift key is pressed.
 		sint32 old_idx = item_list.index_of(old_focus);
 		sint32 new_idx = item_list.index_of(new_focus);
