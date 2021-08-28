@@ -53,6 +53,7 @@ pakinstaller_t::pakinstaller_t() :
 /**
  * This method is called if an action is triggered
  */
+#ifndef __ANDROID__
 bool pakinstaller_t::action_triggered(gui_action_creator_t*, value_t)
 {
 	// now install
@@ -88,3 +89,38 @@ bool pakinstaller_t::action_triggered(gui_action_creator_t*, value_t)
 	finish_install = true;
 	return false;
 }
+#else
+#include <curl/curl.h>
+
+// native download (curl), extract and install
+bool pakinstaller_t::action_triggered(gui_action_creator_t*, value_t)
+{
+	CURL *curl = curl_easy_init(); // can only be called once during program lifecycle
+	if (curl) {
+		dr_chdir( env_t::data_dir );
+		dbg->debug(__FUNCTION__, "libcurl initialized");
+		FOR(vector_tpl<sint32>, i, paks.get_selections()) {
+			CURLcode res;
+			curl_easy_setopt(curl, CURLOPT_URL, pakinfo[i*2]);
+			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+			curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_TRY);
+			res = curl_easy_perform(curl);
+			dbg->debug(__FUNCTION__, "pak target %s", pakinfo[i*2]);
+			if (res != 0) {
+				dbg->debug(__FUNCTION__, "download failed with error code %d, check curl errors; skipping", res);
+				continue;
+			}
+			dbg->debug(__FUNCTION__, "download successful, attempting extract");
+
+		}
+		curl_easy_cleanup(curl);
+	}
+	else {
+		dbg->debug(__FUNCTION__, "libcurl failed to initialize, pakset not downloaded");
+	}
+
+	finish_install = true;
+	return false;
+}
+#endif
