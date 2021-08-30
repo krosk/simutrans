@@ -174,7 +174,17 @@ static CURLcode curl_download_file(CURL *curl, const char* target_file, const ch
 	CURLcode res;
 	curl_easy_setopt(curl, CURLOPT_URL, url);
 	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+	char cabundle_path[FILENAME_MAX];
+	sprintf(cabundle_path, "%s%s", env_t::data_dir, "cacert.pem");
+	FILE *cabundle_file;
+	if (cabundle_file = fopen(cabundle_path, "r")) {
+		fclose(cabundle_file);
+		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+		curl_easy_setopt(curl, CURLOPT_CAINFO, cabundle_path);
+	} else {
+		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+		dbg->warning(__FUNCTION__, "ssl certificate authority bundle not found at %s; https calls will not be validated; this may be a security concern", cabundle_path);
+	}
 	curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_TRY);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_data);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
