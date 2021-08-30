@@ -131,14 +131,9 @@ static void read_zip(const char* outfilename) {
 				dbg->debug(__FUNCTION__, "unexpected content size in file %s (index %d) of zip_archive; is %d, should be %d: %s", st.name, idx, read_size, st.size);
 			}
 			else {
-				// example of path:
-				// simutrans/pak64.german/tool/check_passenger_stops/cursor.script_tool_check_pass.pak
-				// For android platform, the simutrans/ at the start must be removed.
-#ifdef __ANDROID__
-				const char* target_filename = st.name + 10;
-#else
-				const char* target_filename = st.name;
-#endif
+				// path may start with simutrans/, in which case it can be removed safely
+				bool start_with_simutrans = strncmp(st.name, "simutrans/", 10) == 0;
+				const char* target_filename = start_with_simutrans ? st.name + 10 : st.name;
 
 				char extracted_path[FILENAME_MAX];
 				sprintf(extracted_path, "%s%s", env_t::data_dir, target_filename);
