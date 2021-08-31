@@ -94,6 +94,41 @@ bool pakinstaller_t::action_triggered(gui_action_creator_t*, value_t)
 #include <zip.h>
 #include <fstream>
 
+ // linux/android specific, function to create folder makes use of opendir (linux system call) and mkdir (via system)
+#include <dirent.h>
+#include <errno.h>
+
+static bool create_folder_if_required(const char* extracted_path) {
+	char extracted_folder_name[FILENAME_MAX];
+	strcpy(extracted_folder_name, extracted_path);
+	char * last_occurence = strrchr(extracted_folder_name, '/');
+	if (last_occurence != NULL) {
+		last_occurence[0] = '\0';
+	}
+	else {
+		dbg->debug(__FUNCTION__, "Error searching for path? %s", extracted_folder_name);
+		return false;
+	}
+
+	DIR* dir = opendir(extracted_folder_name);
+	if (dir) {
+		closedir(dir);
+	}
+	else if (ENOENT == errno) {
+		cbuffer_t param;
+		param.append("mkdir -p ");
+		param.append(extracted_folder_name);
+		const int retval = system( param );
+		dbg->debug(__FUNCTION__, "- - Created folder %s, ret %d", extracted_folder_name, retval);
+	}
+	else {
+		dbg->debug(__FUNCTION__, "Error checking directory");
+		return false;
+	}
+
+	return true;
+}
+
 static void read_zip(const char* outfilename) {
 	zip_t * zip_archive;
 	int err;
@@ -137,16 +172,13 @@ static void read_zip(const char* outfilename) {
 
 				char extracted_path[FILENAME_MAX];
 				sprintf(extracted_path, "%s%s", env_t::data_dir, target_filename);
-
 				dbg->debug(__FUNCTION__, "- %s: %d", extracted_path, st.size);
-				if (st.size == 0) { // likely a directory
-					cbuffer_t param;
-					param.append("mkdir ");
-					param.append(extracted_path);
-					const int retval = system( param );
-					dbg->debug(__FUNCTION__, "Creating folder %s, ret %d", extracted_path, retval);
-				} 
-				else if(!std::ofstream(extracted_path).write(contents, st.size)) {
+
+				if (!create_folder_if_required(extracted_path)) {
+					continue;
+				}
+
+				if(st.size > 0 && !std::ofstream(extracted_path).write(contents, st.size)) {
 					dbg->debug(__FUNCTION__, "Error writing file");
 				}
 			}
@@ -172,7 +204,7 @@ static CURLcode curl_download_file(CURL *curl, const char* target_file, const ch
 	char cabundle_path[FILENAME_MAX];
 	sprintf(cabundle_path, "%s%s", env_t::data_dir, "cacert.pem");
 	FILE *cabundle_file;
-	if (cabundle_file = fopen(cabundle_path, "r")) {
+	if ((cabundle_file = fopen(cabundle_path, "r"))) {
 		fclose(cabundle_file);
 		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
 		curl_easy_setopt(curl, CURLOPT_CAINFO, cabundle_path);
