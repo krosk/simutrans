@@ -27,7 +27,7 @@ FREETYPE_CONFIG  ?= pkg-config freetype2
 #FREETYPE_CONFIG ?= freetype-config
 
 BACKENDS  := allegro gdi sdl sdl2 mixer_sdl mixer_sdl2 posix
-OSTYPES   := amiga beos freebsd haiku linux mac mingw openbsd
+OSTYPES   := amiga beos freebsd haiku linux mac mingw openbsd android
 
 
 ifeq ($(findstring $(BACKEND), $(BACKENDS)),)
@@ -77,6 +77,8 @@ else ifeq ($(OSTYPE),mingw)
     LDFLAGS += -mwindows
   endif
 else ifeq ($(OSTYPE),linux)
+  LD_FLAGS += "-Wl,-Bstatic"
+else ifeq ($(OSTYPE),android)
   LD_FLAGS += "-Wl,-Bstatic"
 endif
 
@@ -709,6 +711,9 @@ ifeq ($(BACKEND),sdl2)
     ifeq ($(OSTYPE),mac)
       SDL_CFLAGS  := -F /Library/Frameworks -I/Library/Frameworks/SDL2.framework/Headers
       SDL_LDFLAGS := -framework SDL2 -F /Library/Frameworks -I /Library/Frameworks/SDL2.framework/Headers
+    else ifeq ($(OSTYPE),android)
+      SDL_CFLAGS  := -I$(MINGDIR)/include/SDL2 -Dmain=SDL_main
+      SDL_LDFLAGS := -lSDL2
     else
       SDL_CFLAGS  := -I$(MINGDIR)/include/SDL2 -Dmain=SDL_main
       SDL_LDFLAGS := -lSDL2main -lSDL2
@@ -721,6 +726,10 @@ ifeq ($(BACKEND),sdl2)
       SDL_LDFLAGS := $(shell $(SDL2_CONFIG) --libs)
     endif
   endif
+  $(info SDL_CFLAGS is $(SDL_CFLAGS))
+  $(info SDL_LDFLAGS is $(SDL_LDFLAGS))
+  $(info SDL2_CONFIG is $(SDL2_CONFIG))
+  $(info MINGDIR is $(MINGDIR))
   CFLAGS += $(SDL_CFLAGS)
   LIBS   += $(SDL_LDFLAGS)
 endif
@@ -731,6 +740,9 @@ ifeq ($(BACKEND),mixer_sdl2)
     ifeq ($(OSTYPE),mac)
       SDL_CFLAGS  := -F /Library/Frameworks -I/Library/Frameworks/SDL2.framework/Headers
       SDL_LDFLAGS := -framework SDL2 -F /Library/Frameworks -I /Library/Frameworks/SDL2.framework/Headers
+    else ifeq ($(OSTYPE),android)
+      SDL_CFLAGS  := -I$(MINGDIR)/include/SDL2 -Dmain=SDL_main
+      SDL_LDFLAGS := -lSDL2
     else
       SDL_CFLAGS  := -I$(MINGDIR)/include/SDL2 -Dmain=SDL_main
       SDL_LDFLAGS := -lSDL2main -lSDL2
